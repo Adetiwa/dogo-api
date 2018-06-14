@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/config/index.js"],"names":["module","exports","secret","require"],"mappings":";;AAAAA,OAAOC,OAAP,GAAiB;AACf,MAAIC,MAAJ,GAAa;AACX,WAAOC,QAAQ,UAAR,CAAP;AACD;AAHc,CAAjB","file":"index.js","sourcesContent":["module.exports = {\n  get secret() {\n    return require('./secret')\n  }\n}\n"]}

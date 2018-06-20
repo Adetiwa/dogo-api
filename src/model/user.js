@@ -18,6 +18,14 @@ var userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  first: {
+    type: String,
+    required: true,
+  },
+  last: {
+    type: String,
+    required: true,
+  },
   email: {
     type: String
   },
@@ -28,6 +36,10 @@ var userSchema = new mongoose.Schema({
   },
   password: {
     type: String
+  },
+  verifed: {
+    type: Boolean,
+    default: false
   },
   type: {
     type: Array,

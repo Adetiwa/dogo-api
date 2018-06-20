@@ -25,6 +25,7 @@ export default ({ config, db }) => {
             newFare.type = req.body.type;
             newFare.first_3_hours = req.body.first_3_hours;
             newFare.per_min = req.body.per_min;
+            newFare.over_night_charge = req.body.over_night_charge;
             if (req.body.type == 'round_trip') {
               newFare.one_way_charge = 0;
             } else {

@@ -10,9 +10,10 @@ var voucherSchema = new mongoose.Schema({
   },
   users: {
     type: Array,
-    required: true,
   },
-  
+  used: {
+    type: Array,
+  },
   date: {
     type: Date,
     default: Date.now

@@ -14,11 +14,33 @@ import notification from "../services/notification";
 import Notification from "../model/notification";
 import serviceFare from './../services/fare'
 
-import send from "../services/email";
+import { sendEmail, loadTemplate } from "../services/email";
 
 export default ({ config, db }) => {
   let api = Router();
 
+  function formatDate(date) {
+    var monthNames = [
+      "January", "February", "March",
+      "April", "May", "June", "July",
+      "August", "September", "October",
+      "November", "December"
+    ];
+  
+    var day = date.getDate();
+    var monthIndex = date.getMonth();
+    var year = date.getFullYear();
+  
+    return day + ' ' + monthNames[monthIndex] + ' ' + year;
+  }
+
+  function getMinute(createdTime) {
+    let currentTime =  new Date()
+    let newdate = new Date(createdTime)
+    let minutes = ((currentTime - newdate)/60000);
+
+    return Math.round(minutes/60)
+}
 
 
   api.post('/', authenticate, (req, res) => {
@@ -217,6 +239,74 @@ export default ({ config, db }) => {
   });
 
 
+  api.post('/rate', authenticate, async (req, res) => {
+    History.findById(req.body.id, (err, history) => {
+      if (err) {
+        res.json({status: false, msg: err});
+        return
+      }
+      if (history == null) {
+        res.json({status: false, msg: "This order doesn't exist"});
+        return;
+      }
+      if (req.body.rated) {
+        history.rating = req.body.rating;
+        history.rated = true;
+        
+      } else {
+        history.rating = 3;
+        history.rated = true;
+        
+      }
+      history.save((err) => {
+        if (err) {
+          res.json({status: false, msg: err});
+          return
+        }
+        User.findById(history.driver, async (err, driver) => {
+          if (err) {
+            res.json({status: false, msg: err});
+            return
+          }
+          let totalNumber = await History.find({driver: history.driver});
+          let average = Math.round(( Number(req.body.rating) + Number(driver.driver_info.rating) ) / (totalNumber.length));
+          //update driver rating !!!
+          if (isNaN(average)) {
+            average = 3;
+          } else if (average > 5) {
+            average = 5;
+          }
+          User.update({_id: history.driver}, {'$set': {
+            'driver_info.rating': average
+          }},  (err, data) => {
+            if (err) {
+              res.status(403).json({status: false, msg: err});
+              return
+            }
+            FcmToken.find({user: history.driver}, (err, token) => {
+              if (err) {
+                res.status(500).json({status: false, msg: "A server error occured"});
+              } else {
+                if (token.length > 0) {
+                  token.forEach(element => {
+                    notification(element.token, "Trip accessment", `You got a ${req.body.rating} star rating on your last trip`, element.type);
+                  });
+                }
+              }
+            });
+
+            res.json({status: true, msg: "Updated ratings!"})
+        })
+
+      })
+
+    })
+  });
+});
+
+
+
+
 
 
   api.post('/cancel', authenticate, (req, res) => {
@@ -294,14 +384,37 @@ export default ({ config, db }) => {
 
 
   api.put('/:id', authenticate, async (req, res) => {
-    
     try {
       let history = await serviceFare.trip.processFareRequest(req.params.id, req.body.status, req.body.driver_status, process.env.paystack_token);
+      // console.log(history);
       let usSave = await history.save( async (err) => {
           if (err) {
            res.json({status: false, msg: err})
              return;
            }
+
+           User.findById(history.user, async (err, user) => {
+            if (err) {
+                console.log(err);
+            } else {
+                await sendEmail({
+                    from: "noreply@dogo.ng",
+                    to: user.username,
+                    subject: "Trip Completed",
+                    template: "invoice",
+                    context: {
+                      date: formatDate(new Date()),
+                      distance: `${history.distance} km`,
+                      duration: `${getMinute(history.date)} Hours`,
+                      coupon: `${history.voucher ? "- ₦" +history.voucher : "0"}`,
+                      total: `‎₦ ${history.cost}`,
+                      pickup: `‎${history.pickup}`, 
+                      destination: `‎${history.dropoff}`,
+
+                     }
+                });
+            }
+          });
 
            if (req.body.driver_status == 'completed') {
            let vow = await Voucher.findById(history.voucher_id, async (err, v) => {
@@ -310,6 +423,7 @@ export default ({ config, db }) => {
                   }
 
                   v.users.remove(history.user);
+                  v.used.push(history.user)
                   v.users.set(history.user, null);
                   v.save();
             });
@@ -324,7 +438,7 @@ export default ({ config, db }) => {
           } 
           
                
-          return res.json({status: true, data: histories})
+          return res.json({status: true, data: histories, thisdata: history})
           
           });
        

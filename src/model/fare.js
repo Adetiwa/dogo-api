@@ -20,6 +20,10 @@ var fareSchema = new mongoose.Schema({
   night_charge: {
     type: Number,
   },
+  over_night_charge: {
+    type: Number,
+    default: 0,
+  },
   date:  { 
     type: Date, 
     default: Date.now

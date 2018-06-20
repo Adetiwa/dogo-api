@@ -6,9 +6,9 @@ import express from "express";
 var app = express();
 import bodyParser from "body-parser";
 import passport from "passport";
-
+import upload from "express-fileupload";
 var cors = require('cors')
-
+import {join} from 'path';
 var server;
 server = http.createServer(app);
 const LocalStrategy = require('passport-local').Strategy;
@@ -19,6 +19,7 @@ import config from "./config";
 let User = require('./model/user');
 // console.log(process.env);
 app.use(bodyParser.json());
+app.use(upload());
 
 app.use(bodyParser.urlencoded({
   extended: false
@@ -42,6 +43,11 @@ app.use(cors());
 //passport config
 app.use(passport.initialize());
 app.use(express.static(__dirname + '/public'));
+// app.use(express.static(__dirname + '/uploads'));
+const publicImages = express.static(join(__dirname, '../uploads/'));
+
+// app.use('/public', publicPath);
+app.use('/images', publicImages);
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/emitter.html');

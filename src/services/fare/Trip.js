@@ -3,6 +3,7 @@
 import model from './../../model'
 import request from "request"
 import notification from "./../notification";
+
 class Trip
 {
     constructor() {
@@ -13,20 +14,30 @@ class Trip
         this.historyId = null
     }
 
+    sameDay(d1, d2) {
+        return d1.getFullYear() === d2.getFullYear() &&
+          d1.getMonth() === d2.getMonth() &&
+          d1.getDate() === d2.getDate();
+    }
+
     /**
      * 
      */
    async getFareCost(history) {
         this.historyId = history._id
-
+        var date_now = new Date();
         var n = new Date().getHours();
         let night = 0;
         let hours = 0;
         let minutes = this.getMinute(history.date)
         let one_way = 0;
+        let overnight = 0;
         
         if (n > 18 || n < 6) {
           night = 1;
+        }
+        if (!this.sameDay(history.date, date_now)) {
+            overnight = 1;
         }
 
         if (minutes >= 180) {
@@ -39,7 +50,7 @@ class Trip
         } else {
             one_way = 0;
         }
-        let cost = await this.processCost(one_way, night, hours, minutes);
+        let cost = await this.processCost(one_way, night, hours, minutes, overnight);
         if(history.voucher) {
             cost = cost - history.voucher;
             if (cost < 0) {
@@ -47,26 +58,24 @@ class Trip
             }
             
         }
-        this.cost = cost
-        
         return cost
     }
    
-    async processCost(one_way, night, hours, minutes) {
+ 
+    async processCost(one_way, night, hours, minutes, overnight) {
         let history = this.trip
         try{
-            let fare = await model.fare.findOne({type: history.type})
+            let fare = await model.fare.findOne({type: history.type});
             var cost = 0;
             if (fare != null) {
                 if (hours != 1) {
                     cost = Math.ceil(parseFloat(hours * fare.first_3_hours));
                 } else {
-                    cost = Math.ceil(parseFloat(hours * fare.first_3_hours) + parseFloat(fare.per_min * (minutes - 180)) + parseFloat(one_way * fare.one_way_charge) + parseFloat(night * fare.night_charge)); 
+                    cost = Math.ceil(parseFloat(hours * fare.first_3_hours) + parseFloat(fare.per_min * (minutes - 180)) + parseFloat(one_way * fare.one_way_charge) + parseFloat(night * fare.night_charge) + parseFloat(overnight * fare.over_night_charge)); 
                 }
                 this.cost = cost
                 return cost
             } 
-            
             return cost
         } catch(Error) {
             if(Error) {
@@ -101,6 +110,8 @@ class Trip
         let history = await this.getTripById(id);
         
         let cost = await this.getFareCost(history);
+        let shares = await model.shares.findOne({});
+          
         
         if ((driver_status == 'completed') && (history.payment_method == 'CARD')) {
             return new Promise((resolve, reject) => {
@@ -123,6 +134,8 @@ class Trip
                 history.payment_status = "completed";
                 history.driver_status = "completed";
                 history.status = "completed";
+                history.driverCost = Math.round(cost * ((shares.driver_percent)/100)),
+                history.adminCost = Math.round(cost * ((shares.admin_percent)/100)),
                 history.cost = cost;
                 history.date_finished = Date.now();
 
@@ -136,6 +149,8 @@ class Trip
                 history.payment_status = null;
                 history.driver_status = "completed";
                 history.status = "completed";
+                history.driverCost = Math.round(cost * ((shares.driver_percent)/100)),
+                history.adminCost = Math.round(cost * ((shares.admin_percent)/100)),
                 history.cost = cost;
             }
             resolve(history);
@@ -143,9 +158,11 @@ class Trip
         });
 
         } else if((driver_status == 'completed') && history.payment_method == 'CASH') {
-            history.payment_status = 'completed'
-            history.driver_status = 'completed'
-            history.status = 'completed'
+            history.payment_status = 'completed';
+            history.driver_status = 'completed';
+            history.status = 'completed';
+            history.driverCost = Math.round(cost * ((shares.driver_percent)/100)),
+            history.adminCost = Math.round(cost * ((shares.admin_percent)/100)),
             history.date_finished = Date.now();
             history.cost = cost
 
@@ -154,11 +171,12 @@ class Trip
             history.status = status
         }
 
+ 
         model.token.find({$or:[{user: history.user},{driver: history.driver}]}, (err, token) => {
             if (err) {
                 console.log(err);
             } else {
-                console.log(token.length);
+                // console.log(token.length);
                 if (token.length > 0) {
                 token.forEach(element => {
                     notification(element.token, `Trip ${driver_status}`, `Driver has ${driver_status} trip ${driver_status == 'completed' ? '- ₦'+ cost : ''}`, element.type);
@@ -167,16 +185,9 @@ class Trip
                 }
              }
         });
-        // let histories = await model.history.find({driver: history.driver}, (err, histories) => {
-        //     if (err) {
-        //         console.log(err);
-        //     } 
-        //     console.log("From direct api",histories);
-        //      return histories;
-        // });
-        // return histories;
 
-
+        
+       
         
         return history;
         // return history;
@@ -188,7 +199,6 @@ class Trip
         let trip = await model.history.findById(id)
         
         this.trip = trip
-
         return trip
     }
 }

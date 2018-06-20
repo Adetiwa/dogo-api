@@ -67,7 +67,10 @@ export default ({ config, db }) => {
               } 
               if (voucher) {
                 if (voucher.users.includes(req.body.user)) {
-                  res.json({status: false, data: "This code has already been used by you" });
+                  res.json({status: false, msg: "This code is being used by you" });
+                } else if (voucher.used.includes(req.body.user)) {
+                  res.json({status: false, msg: "This code has already been used by you" });
+                
                 } else {
                     //add to user list 
                     Voucher.update(
@@ -102,7 +105,7 @@ export default ({ config, db }) => {
                     
                 }
               } else {
-                res.json({status: false, data: "This is an invalid voucher code" });
+                res.json({status: false, msg: "This is an invalid voucher code" });
               }
 
               

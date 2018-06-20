@@ -12,23 +12,74 @@ import FcmToken from "../model/token";
 import { generateAccessToken, respond, authenticate } from "../middleware/authmiddleware";
 import { adminAuthorization, userAuthentication } from "../middleware/adminAuth";
 import { getID } from "../helpers/auth";
+import { sendEmail, loadTemplate } from "../services/email";
+import { transfrormObj, makeid, removeSpace } from "../helpers";
+
 
 export default ({ config, db }) => {
   let api = Router();
   // 'v1/user'
 
-  api.post('/register', (req, res) => {
+  
+
+    
+
+  api.post('/register', async (req, res) => {
     let type = req.body.type;
     let tel = req.body.tel;
     let email = req.body.email;
-    
+    if (type == "driver") {
+      if (!req.files) {
+      return res.json({status: false, msg: 'No files were uploaded.'});
+      } else if (!req.files.driver_license) {
+        return res.json({status: false, msg: "Upload your driver's licence"});
+      } else if (!req.files.profile_picture) {
+        return res.json({status: false, msg: 'Upload your profile picture'});
+      }
+      var date  = new Date();
+      var year = date.getFullYear();
+      var month = date.getMonth();
+      var day = date.getDate();
+      var milli = date.getMilliseconds();
+      var file_path_driver = "";
+      var file_path_profile = "";
+      var profile_url = "";
+      var driver_url = "";
+      var rand = makeid();
+      
+      if (req.files) {
+        if (req.files.driver_license && req.files.profile_picture) {
+          var driver_license = req.files.driver_license
+          var profile_pic = req.files.profile_picture
+          file_path_driver = process.cwd()+'/uploads/driver/'+rand+removeSpace(req.files.driver_license.name);
+          file_path_profile = process.cwd()+'/uploads/profile/'+rand+removeSpace(req.files.profile_picture.name);
+          profile_url = process.env.domain+"images/profile/"+rand+removeSpace(req.files.profile_picture.name);
+          driver_url = process.env.domain+"images/driver/"+rand+removeSpace(req.files.driver_license.name);
+          let movedriver = await driver_license.mv(file_path_driver, function(err) {
+          });
+
+          let moveprofile = await profile_pic.mv(file_path_profile, function(err) {
+          });
+        }
+      
+      }
+      
+      req.body.driver_licence = driver_url;
+      req.body.profile_image = profile_url;
+      
+      var data = await transfrormObj(req.body);
+      req.body = data;
+      // console.log(data);
+  }
+
+
     User.findOne({username: email, tel: tel}, (err, user) => {
       if(err) {
-        res.status(500).send({status: false, msg: err});
+        res.status().send({status: false, msg: err});
         return;
       }
       
-      if (user !== null) {
+      if (user) {
         let thisUserType = user.type;
         if (thisUserType.includes(type)) {
           //throw error
@@ -53,54 +104,54 @@ export default ({ config, db }) => {
                 res.status(500).send({status: false, msg: err});
                 return;
               }
-              // res.status(500).send({status: true, msg: 'Driver saved'});
-              request.post({
-                url: config.secret.url+'v1/user/login',
-                json: { email: req.body.email, password: req.body.password }
-                }, function(error, response, body){
-                  if (error) {
-                    res.status(500).send({status: false, msg: error});
-                    return;
-                  } else {
-                    res.status(200).send(response.body);
-                  }
-              });
+              //send email 
+             
+              return res.status(200).send({status: true, msg: "Thank you for registering, we will notify you once we approve your account"});
               
-              return;
             });
-            return;
-            // user.type = user.type.push('driver');
-            // user.driver_info = req.body.user_info;
-            // user.save((err, user) => {
-            //   if (err) {
-            //     res.status(500).send({status: false, msg: err});
-            //     return;
-            //   }
-            //   res.status(500).send({status: false, msg: 'Driver saved'});
-            // });
-          } 
-          //login!!!
+       
+          } else if (type == 'user') {
+            User.update(
+              {_id: user._id}, 
+              {
+                $addToSet: {
+                "type": "user"
+              }
+            }, (err, data) => {
+              console.log(data)
+            })
+            
+            user.save((err, user) => {
+              if (err) {
+                res.send({status: false, msg: err});
+                return;
+              }
+               //send email 
+             
+              request.post({
+                url: process.env.URL+'v1/user/login',
+                json: { email: user.email, password: user.password }
+              }, function(error, response, body){
+                if (error) {
+                  res.send({status: false, msg: error});
+                  return;
+                } else {
+                  return res.status(200).send(response.body);
+                }
+            });
+            }); 
           
-          //   request.post({
-          //     url: config.secret.url+'v1/user/login',
-          //     json: { email: user.email, password: user.password }
-          //   }, function(error, response, body){
-          //     if (error) {
-          //       res.status(500).send({status: false, msg: error});
-          //       return;
-          //     } else {
-          //       res.status(200).send(response.body);
-          //     }
-          // });
-          return;
           }
-        }  else if (req.body.type == 'user'){
-        User.register(new User({ username: req.body.email, name: req.body.name, tel: req.body.tel, type: req.body.type }), req.body.password, (err, user) => {
+        }
+        } else {
+       
+        if (type == 'user'){
+        User.register(new User({ username: req.body.email, name: req.body.name, tel: req.body.tel, type: "user" }), req.body.password, (err, user) => {
           if (err) {
             if(err.code == 11000) {
-              res.status(500).send({status: false, msg: 'This number has been used by an existing user'});
+              res.send({status: false, msg: 'This number has been used by an existing user'});
             } else {
-              res.status(500).send({status: false, msg: err.message});
+              res.send({status: false, msg: err.message});
             }
             return;
           }
@@ -110,8 +161,8 @@ export default ({ config, db }) => {
             })(req, res, () => {
     
                 request.post({
-                    url: config.secret.url+'v1/user/login',
-                    json: { email: req.body.email, password: req.body.password }
+                    url: process.env.URL+'v1/user/login',
+                    json: { email: req.body.email, password: req.body.first }
                   }, function(error, response, body){
                     if (error) {
                       res.status(500).send({status: false, msg: error});
@@ -124,36 +175,40 @@ export default ({ config, db }) => {
             });
     
         });
-      } else if (req.body.type == 'driver'){
-        User.register(new User({ username: req.body.email, name: req.body.name, tel: req.body.tel, type: req.body.type, driver_info: req.body.driver_info }), req.body.password, (err, user) => {
+      } else if (type == 'driver'){
+        User.register(new User({ username: req.body.email, name: req.body.name, last: req.body.last, first: req.body.first, tel: req.body.tel, type: "driver", driver_info: req.body.driver_info }), req.body.first, (err, user) => {
           if (err) {
             if(err.code == 11000) {
-              res.status(500).send({status: false, msg: 'This number has been used by an existing user'});
+              res.send({status: false, msg: 'This number has been used by an existing user'});
             } else {
-              res.status(500).send({status: false, msg: err.message});
+              res.send({status: false, msg: err.message});
             }
             return;
           }
-          passport.authenticate(
-            'local', {
-              session: false
-            })(req, res, () => {
+          // passport.authenticate(
+          //   'local', {
+          //     session: false
+          //   })(req, res, () => {
     
-                request.post({
-                    url: config.secret.url+'v1/user/login',
-                    json: { email: req.body.email, password: req.body.password }
-                  }, function(error, response, body){
-                    if (error) {
-                      res.status(500).send({status: false, msg: error});
-                      return;
-                    } else {
-                      res.status(200).send(response.body);
-                    }
-                });
+          //       request.post({
+          //           url: process.env.URL+'v1/user/login',
+          //           json: { email: req.body.email, password: req.body.password }
+          //         }, function(error, response, body){
+          //           if (error) {
+          //             res.send({status: false, msg: error});
+          //             return;
+          //           } else {
+          //             res.status(200).send(response.body);
+          //           }
+          //       });
     
-            });
+          //   });
+
+          return res.status(200).send({status: true, msg: "Thank you for registering, we will notify you once we approve your account"});
+            
     
         });
+        }
       }
       });
       
@@ -238,7 +293,7 @@ export default ({ config, db }) => {
 
 
   api.post('/forgot', (req, res) => {
-    User.findOne({username: req.body.email}, (err, user) => {
+    User.findOne({username: req.body.email}, async (err, user) => {
       if (err) {
         res.status(500).json({status: false, msg: "A server error occured"});
         return;
@@ -249,6 +304,18 @@ export default ({ config, db }) => {
       }
       var id = user._id;
       var name = user.name;
+      var link = "https://www.dogo.ng/new-password?"+id+"&req.body.email";
+
+      await sendEmail({
+        from: "noreply@dogo.ng",
+        to: req.body.email,
+        subject: "Change your password",
+        template: "reset",
+        context: {
+          fullname: name,
+          link: link
+         }
+    });
       //send mail!!!!
         // we have deleted the user
         res.status(200).send({status: true, msg: `Hi, ${name}, Kindly check your mail`});
@@ -256,7 +323,7 @@ export default ({ config, db }) => {
   });
 
 
-  api.put('/change_password', authenticate, (req, res) => {
+  api.put('/change_password', (req, res) => {
     User.findById(req.body.user, (err, user) => {
       if (err) {
         res.status(500).json({status: false, msg: "A server error occured"});
@@ -271,6 +338,7 @@ export default ({ config, db }) => {
           res.status(500).json({status: false, msg: "A server error occured"});
           return;
         } 
+        // user.
         user.save((err) => {
           if (err) {
             res.status(500).json({status: false, msg: "A server error occured"});

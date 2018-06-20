@@ -13,5 +13,11 @@ module.exports = {
     },
     get voucher() {
         return require('./voucher')
+    },
+    get shares() {
+        return require('./shares')
+    },
+    get user() {
+        return require('./user')
     }
 }

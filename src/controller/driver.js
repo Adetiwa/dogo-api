@@ -126,6 +126,35 @@ export default ({ config, db }) => {
 });
 
 
+api.post('/update_location', authenticate, () => {
+  User.findById(req.body.id, (err, user) => {
+    if (err) {
+        if (err.name == "CastError") {
+          res.json({status: false, msg: 'Invalid data!'});
+        } else {
+          res.json({status: false, msg: err});
+        }
+      return;
+    }
+
+    if (!user) {
+      res.json({status: false, msg: "User doesn't exist"});
+      return;
+    }
+
+    User.update({_id: req.body.id}, {
+      $set: {
+        "driver_info.last_location.lat": req.body.lat,
+        "driver_info.last_location.lng": req.body.lng
+      }
+    }, (err, value) => {
+      // console.log(value)
+      res.json({status: true, msg: "success"});
+    });
+  });
+});
+
+
 api.put('/update', authenticate, (req, res) => {
     User.findById(req.body.id, (err, user) => {
       if (err) {
@@ -169,15 +198,6 @@ api.put('/update', authenticate, (req, res) => {
         } catch (Error) {
           res.status(500).json({status: false, msg: "A server error occured"});
         }
-        // User.findById(req.body.id, (err, user) => {
-        //   if (err) {
-        //     res.status(500).json({status: false, msg: "A server error occured"});
-        //     return;
-        //   } 
-
-        //   res.status(200).json({status: true, msg: "Success", data: user});
-         
-        // });
       });
     });
   });

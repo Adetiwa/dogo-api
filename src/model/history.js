@@ -30,6 +30,12 @@ var historySchema = new mongoose.Schema({
   cost: {
     type: Number,
   },
+  driverCost: {
+    type: Number,
+  },
+  adminCost: {
+    type: Number,
+  },
   driver_status: {
     type: String,
     default: null,
@@ -57,7 +63,11 @@ var historySchema = new mongoose.Schema({
   },
   rating: {
     type: Number,
-    default: 0
+    default: 3
+  },
+  rated: {
+    type: Boolean,
+    default: false
   },
   km: {
     type: Number,

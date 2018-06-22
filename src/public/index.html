@@ -1,31 +1,10 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Web Client</title>
+        <title>Dogo Api</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     </head>
     <body>
-    Hwllo world
+    Dogo API
     </body>
-    <script src="//cdn.ably.io/lib/ably.min-1.js"></script>
-    ​
-    <script type="text/javascript">
-      var realtime = new Ably.Realtime("C_eQoA.NzIAuA:wSAhaykRniuqohff");
-
-      // var channel = realtime.channels.get("090864500494");
-      // channel.subscribe(function(msg) {
-      //   alert("Received: " + JSON.stringify(msg.data));
-      // });
-
-
-      var channel = realtime.channels.get("090864500494");
-      channel.publish("090864500494", { "lat": 6.6018385, "lng": 3.351486 });
-
-
-      var channel = realtime.channels.get("08161811260");
-      channel.publish("08161811260", { "lat": 6.601838, "lng": 3.351486 });
-
-
-
-  </script>
   </html>

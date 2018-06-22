@@ -50,13 +50,9 @@ const publicImages = express.static(join(__dirname, '../uploads/'));
 app.use('/images', publicImages);
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/emitter.html');
+    res.sendFile(__dirname + '/index.html');
 });
 
-app.get('/olumide', (req, res) => {
-  // res.sendFile(__dirname + '/emitter.html');
-  res.json({status: true, data: "olumide"});
-});
 passport.use(new LocalStrategy({
   usernameField: 'email',
   passwordField: 'password'
@@ -70,7 +66,7 @@ passport.deserializeUser(User.deserializeUser());
 
 
 //api routes v1
-app.use('/api/v1', routes);
+app.use('/v1', routes);
 provider.cron;
 app.use(errorHandler);
 

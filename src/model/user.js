@@ -20,11 +20,9 @@ var userSchema = new mongoose.Schema({
   },
   first: {
     type: String,
-    required: true,
   },
   last: {
     type: String,
-    required: true,
   },
   email: {
     type: String
@@ -37,7 +35,7 @@ var userSchema = new mongoose.Schema({
   password: {
     type: String
   },
-  verifed: {
+  verified: {
     type: Boolean,
     default: false
   },

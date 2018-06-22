@@ -8,6 +8,7 @@ import config from "../config";
 import bcrypt from 'bcryptjs';
 import request from 'request';
 import FcmToken from "../model/token";
+import { sendEmail, loadTemplate } from "../services/email";
 
 import { generateAccessToken, respond, authenticate } from "../middleware/authmiddleware";
 import { userAuthentication,adminAuthorization } from "../middleware/adminAuth";
@@ -119,6 +120,17 @@ export default ({ config, db }) => {
         if (err) {
           res.status(403).json({status: false, msg: err});
           return
+        }
+        if (req.body.status) {
+          sendEmail({
+            from: "noreply@dogo.ng",
+            to: user.email,
+            subject: "Account Verified",
+            template: "driver_verified",
+            context: {
+              fullname: user.name
+            }
+          });
         }
         res.json({status: true, msg:"success" })
     })

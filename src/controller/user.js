@@ -105,6 +105,15 @@ export default ({ config, db }) => {
                 return;
               }
               //send email 
+              sendEmail({
+                from: "noreply@dogo.ng",
+                to: req.body.email,
+                subject: "Information Recieved",
+                template: "welcome_driver",
+                context: {
+                  fullname: req.body.name
+                }
+              });
              
               return res.status(200).send({status: true, msg: "Thank you for registering, we will notify you once we approve your account"});
               
@@ -155,6 +164,17 @@ export default ({ config, db }) => {
             }
             return;
           }
+          var link = process.env.domain+"verify.php?u="+makeid()+"&ui="+makeid()+"&email="+req.body.email;
+          sendEmail({
+            from: "noreply@dogo.ng",
+            to: req.body.email,
+            subject: "Welcome to dogo!",
+            template: "welcome",
+            context: {
+              fullname: req.body.name,
+              link: link
+            }
+          });
           passport.authenticate(
             'local', {
               session: false
@@ -162,7 +182,7 @@ export default ({ config, db }) => {
     
                 request.post({
                     url: process.env.URL+'v1/user/login',
-                    json: { email: req.body.email, password: req.body.first }
+                    json: { email: req.body.email, password: req.body.password }
                   }, function(error, response, body){
                     if (error) {
                       res.status(500).send({status: false, msg: error});
@@ -185,25 +205,15 @@ export default ({ config, db }) => {
             }
             return;
           }
-          // passport.authenticate(
-          //   'local', {
-          //     session: false
-          //   })(req, res, () => {
-    
-          //       request.post({
-          //           url: process.env.URL+'v1/user/login',
-          //           json: { email: req.body.email, password: req.body.password }
-          //         }, function(error, response, body){
-          //           if (error) {
-          //             res.send({status: false, msg: error});
-          //             return;
-          //           } else {
-          //             res.status(200).send(response.body);
-          //           }
-          //       });
-      
-          //   });
-
+           sendEmail({
+            from: "noreply@dogo.ng",
+            to: req.body.email,
+            subject: "Information Recieved",
+            template: "welcome_driver",
+            context: {
+              fullname: req.body.name
+            }
+          });
           return res.status(200).send({status: true, msg: "Thank you for registering, we will notify you once we approve your account"});
             
     
@@ -216,6 +226,7 @@ export default ({ config, db }) => {
     
 
     api.put('/edit', authenticate, (req, res) => {
+          
       User.findById(req.body.user, (err, user) => {
         if (err) {
           res.status(500).json({status: false, msg: "A server error occured"});
@@ -224,6 +235,7 @@ export default ({ config, db }) => {
         
         user.name = req.body.name;
         user.tel = req.body.tel;
+        
         if (req.body.driver_info) {
           user.driver_info = req.body.driver_info;
         }
@@ -233,7 +245,6 @@ export default ({ config, db }) => {
             res.status(500).json({status: false, msg: "A server error occured"});
             return;
           } 
-          // user.
           user.save((err) => {
             if (err) {
               res.status(500).json({status: false, msg: "A server error occured"});
@@ -241,7 +252,7 @@ export default ({ config, db }) => {
             } 
             request.post({
               url: process.env.URL+'v1/user/login',
-              json: { email: user.email, password: req.body.password }
+              json: { email: req.body.email, password: req.body.password }
             }, function(error, response, body){
               if (error) {
                 res.status(500).send({status: false, msg: error});
@@ -304,6 +315,41 @@ export default ({ config, db }) => {
         // we have deleted the user
         req.logout();
         res.status(200).send({status: true, msg: 'success'});
+     }
+    });
+  });
+
+
+
+
+  api.post('/verify', (req, res) => {
+    User.findOne({ username: req.body.email }, (err, user) => {
+      if (err) {
+        res.status(500).json({status: false, msg: "A server error occured"});
+      } else {
+        if (!user) {
+          res.json({status: false, msg: "This user doesn't exist"});
+        } else {
+          user.verified = true;
+          user.save((err) => {
+            if (err) {
+              res.json({status: false, msg: "A server error occured"});
+            } 
+            sendEmail({
+              from: "noreply@dogo.ng",
+              to: req.body.email,
+              subject: "Account Verified",
+              template: "user_verified",
+              context: {
+                fullname: req.body.name
+              }
+            });
+
+            res.status(200).send({status: true, msg: 'Thank you. Your account is now verified'});
+          });
+        }
+        
+        
      }
     });
   });

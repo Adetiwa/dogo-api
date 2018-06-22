@@ -90,7 +90,7 @@ export default ({ config, db }) => {
   //'v1/foodtruck/:id' - DELETE
   api.delete('/:id', (req, res) => {
  
-    FcmToken.findById(req.params.id).remove((err, token) => {
+    FcmToken.findOne({token: req.params.id}).remove((err, token) => {
       if (err) {
         res.status(500).json({status: false, msg: "A server error occured"});
       } else {

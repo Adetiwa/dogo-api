@@ -40,19 +40,22 @@ export default ({ config, db }) => {
 
 
   api.post('/push-test/:id', (req, res) => {
-    FcmToken.find({user: req.params.id}, (err, token) => {
+    FcmToken.find({user: req.params.id}, async (err, token) => {
+      let os = [];
+      let length = 0;
       if (err) {
         console.log(err);
         res.status(500).json({status: false, msg: "A server error occured"});
       } else {
         if (token.length > 0) {
-          token.forEach(element => {
+         let sendNot = await token.forEach(element => {
             notification(element.token, "Hello world", "To olumidde!!!!", element.type);
           });
+          length = token.length 
         } else {
           // console.log("No token");
         }
-        res.json({status: true, data: token.token}); 
+        res.json({status: true, data: `Sent to ${length} devices`}); 
       }
     });
   });    

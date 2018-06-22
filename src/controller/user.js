@@ -201,7 +201,7 @@ export default ({ config, db }) => {
           //             res.status(200).send(response.body);
           //           }
           //       });
-    
+      
           //   });
 
           return res.status(200).send({status: true, msg: "Thank you for registering, we will notify you once we approve your account"});
@@ -214,6 +214,49 @@ export default ({ config, db }) => {
       
     });
     
+
+    api.put('/edit', authenticate, (req, res) => {
+      User.findById(req.body.user, (err, user) => {
+        if (err) {
+          res.status(500).json({status: false, msg: "A server error occured"});
+          return;
+        }
+        
+        user.name = req.body.name;
+        user.tel = req.body.tel;
+        if (req.body.driver_info) {
+          user.driver_info = req.body.driver_info;
+        }
+
+        user.setPassword(req.body.password, (err, user) => {
+          if (err) {
+            res.status(500).json({status: false, msg: "A server error occured"});
+            return;
+          } 
+          // user.
+          user.save((err) => {
+            if (err) {
+              res.status(500).json({status: false, msg: "A server error occured"});
+              return;
+            } 
+            request.post({
+              url: process.env.URL+'v1/user/login',
+              json: { email: user.email, password: req.body.password }
+            }, function(error, response, body){
+              if (error) {
+                res.status(500).send({status: false, msg: error});
+                return;
+              } else {
+                res.status(200).send({status: true, data: response.body});
+              }
+          });
+  
+         
+          })  
+        });
+      })
+    })
+
 
 
   // 'v1/account/login'
@@ -304,15 +347,14 @@ export default ({ config, db }) => {
       }
       var id = user._id;
       var name = user.name;
-      var link = "https://www.dogo.ng/new-password?"+id+"&req.body.email";
-
+      var link = process.env.domain+"change-password.php?u="+id+"&ui="+makeid()+"&email="+req.body.email;
+      
       await sendEmail({
         from: "noreply@dogo.ng",
         to: req.body.email,
         subject: "Change your password",
         template: "reset",
         context: {
-          fullname: name,
           link: link
          }
     });
@@ -345,7 +387,7 @@ export default ({ config, db }) => {
             return;
           } 
 
-          res.status(200).json({status: false, msg: "Password successfully changed", data: user});
+          res.status(200).json({status: true, msg: "Password successfully changed", data: user});
           return;
        
         
